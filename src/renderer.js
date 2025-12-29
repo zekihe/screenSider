@@ -17,8 +17,8 @@ class RecorderState {
         this.recordingStartTime = null;
         this.timerInterval = null;
         this.currentVideoBlob = null;
-
-        // 添加样式相关属性
+        
+        // 样式相关属性
         this.pipStyle = 'rounded'; // rectangle, rounded, circle
         this.showBorder = true;
         this.showShadow = true;
@@ -53,10 +53,20 @@ const elements = {
     pipSizeSlider: document.getElementById('pipSize'),
     pipSizeValue: document.getElementById('pipSizeValue'),
     
+    // 样式相关
+    showBorderCheckbox: document.getElementById('showBorder'),
+    showShadowCheckbox: document.getElementById('showShadow'),
+    borderColorPicker: document.getElementById('borderColor'),
+    borderColorPickerContainer: document.getElementById('borderColorPicker'),
+    styleOptions: document.querySelectorAll('.style-option'),
+    
     // 视频预览
     videoPreview: document.getElementById('videoPreview'),
     resultVideo: document.getElementById('resultVideo')
 };
+
+// 拖拽相关变量
+let startDrag, drag, stopDrag, handleTouchStart, handleTouchMove, handleTouchEnd;
 
 // 初始化应用
 async function init() {
@@ -68,7 +78,7 @@ async function init() {
     // 加载屏幕源
     await loadSources();
     
-    // 初始化摄像头
+    // 初始化摄像头控制
     initCameraControls();
     
     // 设置事件监听器
@@ -259,37 +269,36 @@ function initCameraControls() {
         updateCameraPipSize();
         saveSettings();
     });
-
-     // 样式选择
-    const styleOptions = document.querySelectorAll('.style-option');
-    styleOptions.forEach(option => {
+    
+    // 样式选择
+    elements.styleOptions.forEach(option => {
         option.addEventListener('click', () => {
-            styleOptions.forEach(opt => opt.classList.remove('selected'));
+            elements.styleOptions.forEach(opt => opt.classList.remove('selected'));
             option.classList.add('selected');
             state.pipStyle = option.dataset.style;
             updateCameraPipStyle();
             saveSettings();
         });
     });
-
+    
     // 边框开关
-    document.getElementById('showBorder').addEventListener('change', (e) => {
+    elements.showBorderCheckbox.addEventListener('change', (e) => {
         state.showBorder = e.target.checked;
-        document.getElementById('borderColorPicker').style.display = 
+        elements.borderColorPickerContainer.style.display = 
             state.showBorder ? 'block' : 'none';
         updateCameraPipStyle();
         saveSettings();
     });
     
     // 阴影开关
-    document.getElementById('showShadow').addEventListener('change', (e) => {
+    elements.showShadowCheckbox.addEventListener('change', (e) => {
         state.showShadow = e.target.checked;
         updateCameraPipStyle();
         saveSettings();
     });
-
+    
     // 边框颜色
-    document.getElementById('borderColor').addEventListener('input', (e) => {
+    elements.borderColorPicker.addEventListener('input', (e) => {
         state.borderColor = e.target.value;
         updateCameraPipStyle();
         saveSettings();
@@ -373,9 +382,10 @@ async function initCamera() {
         elements.cameraPipVideo.srcObject = state.cameraStream;
         elements.cameraPip.style.display = 'block';
         
-        // 更新画中画位置和大小
+        // 更新画中画位置、大小和样式
         updateCameraPipPosition();
         updateCameraPipSize();
+        updateCameraPipStyle();
         
         // 启用画中画拖拽
         setupCameraPipDrag();
@@ -444,9 +454,6 @@ function updateCameraPipSize() {
     elements.cameraPip.style.height = `${state.pipSize * 0.75}px`; // 保持 4:3 比例
 }
 
-
-// 修改 setupCameraPipDrag 函数，使事件处理器可访问
-let startDrag, drag, stopDrag, handleTouchStart, handleTouchMove, handleTouchEnd;
 // 设置画中画拖拽功能
 function setupCameraPipDrag() {
     const pip = elements.cameraPip;
@@ -553,6 +560,22 @@ function setupCameraPipDrag() {
     document.addEventListener('touchend', handleTouchEnd);
 }
 
+// 禁用画中画拖拽
+function disableCameraPipDrag() {
+    const pip = elements.cameraPip;
+    pip.style.cursor = 'default';
+    
+    // 移除事件监听器
+    pip.removeEventListener('mousedown', startDrag);
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mouseup', stopDrag);
+    
+    // 移除触摸事件
+    pip.removeEventListener('touchstart', handleTouchStart);
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
+}
+
 // 开始录制
 async function startRecording() {
     if (state.isRecording || !state.selectedSourceId) {
@@ -650,10 +673,42 @@ async function startRecording() {
                     // 绘制摄像头视频
                     ctx.drawImage(cameraVideo, pipX, pipY, pipWidth, pipHeight);
                     
-                    // 添加边框
-                    ctx.strokeStyle = '#667eea';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(pipX, pipY, pipWidth, pipHeight);
+                    // 根据样式添加边框
+                    if (state.showBorder) {
+                        ctx.strokeStyle = state.borderColor;
+                        ctx.lineWidth = state.borderWidth;
+                        
+                        if (state.pipStyle === 'circle') {
+                            // 圆形边框
+                            ctx.beginPath();
+                            ctx.arc(
+                                pipX + pipWidth/2,
+                                pipY + pipHeight/2,
+                                Math.min(pipWidth, pipHeight)/2,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.stroke();
+                        } else if (state.pipStyle === 'rounded') {
+                            // 圆角矩形边框
+                            const radius = 10;
+                            ctx.beginPath();
+                            ctx.moveTo(pipX + radius, pipY);
+                            ctx.lineTo(pipX + pipWidth - radius, pipY);
+                            ctx.quadraticCurveTo(pipX + pipWidth, pipY, pipX + pipWidth, pipY + radius);
+                            ctx.lineTo(pipX + pipWidth, pipY + pipHeight - radius);
+                            ctx.quadraticCurveTo(pipX + pipWidth, pipY + pipHeight, pipX + pipWidth - radius, pipY + pipHeight);
+                            ctx.lineTo(pipX + radius, pipY + pipHeight);
+                            ctx.quadraticCurveTo(pipX, pipY + pipHeight, pipX, pipY + pipHeight - radius);
+                            ctx.lineTo(pipX, pipY + radius);
+                            ctx.quadraticCurveTo(pipX, pipY, pipX + radius, pipY);
+                            ctx.closePath();
+                            ctx.stroke();
+                        } else {
+                            // 方形边框
+                            ctx.strokeRect(pipX, pipY, pipWidth, pipHeight);
+                        }
+                    }
                 }
                 
                 requestAnimationFrame(drawFrame);
@@ -696,11 +751,6 @@ async function startRecording() {
         
         console.log('使用的 MIME 类型:', mimeType);
         
-        /**
-         * 录制文件较大
-         * 可以调整 videoBitsPerSecond 参数
-         * 默认是 2.5 Mbps，可以降低到 1-2 Mbps
-         */
         state.mediaRecorder = new MediaRecorder(finalStream, {
             mimeType: mimeType,
             videoBitsPerSecond: 2500000 // 2.5 Mbps
@@ -730,8 +780,11 @@ async function startRecording() {
             // 清理流
             finalStream.getTracks().forEach(track => track.stop());
             state.recordedChunks = [];
-
-            // 恢复控件显示
+            
+            // 停止计时器
+            stopTimer();
+            
+            // 恢复画中画控件显示
             if (state.cameraEnabled) {
                 elements.cameraPip.classList.remove('recording');
                 // 重新启用拖拽功能
@@ -739,9 +792,6 @@ async function startRecording() {
                     setupCameraPipDrag();
                 }
             }
-            
-            // 停止计时器
-            stopTimer();
             
             // 更新UI
             updateUIForStopped();
@@ -751,16 +801,16 @@ async function startRecording() {
         // 开始录制
         state.mediaRecorder.start(1000); // 每1秒收集一次数据
         state.isRecording = true;
-
+        
+        // 开始计时器
+        startTimer();
+        
         // 隐藏画中画控件
         if (state.cameraEnabled) {
             elements.cameraPip.classList.add('recording');
             // 禁用拖拽功能
             disableCameraPipDrag();
         }
-        
-        // 开始计时器
-        startTimer();
         
         // 更新UI
         updateUIForRecording();
@@ -782,25 +832,16 @@ async function startRecording() {
         
         updateStatus(errorMessage, 'error');
         alert(errorMessage);
+        
+        // 如果录制失败，恢复控件显示
+        if (state.cameraEnabled) {
+            elements.cameraPip.classList.remove('recording');
+            if (state.cameraStream) {
+                setupCameraPipDrag();
+            }
+        }
     }
 }
-
-// 禁用画中画拖拽
-function disableCameraPipDrag() {
-    const pip = elements.cameraPip;
-    pip.style.cursor = 'default';
-    
-    // 移除事件监听器
-    pip.removeEventListener('mousedown', startDrag);
-    document.removeEventListener('mousemove', drag);
-    document.removeEventListener('mouseup', stopDrag);
-    
-    // 移除触摸事件
-    pip.removeEventListener('touchstart', handleTouchStart);
-    document.removeEventListener('touchmove', handleTouchMove);
-    document.removeEventListener('touchend', handleTouchEnd);
-}
-
 
 // 停止录制
 function stopRecording() {
@@ -809,15 +850,6 @@ function stopRecording() {
     }
     
     console.log('停止录制...');
-
-    // 停止录制时恢复控件显示
-    if (state.cameraEnabled) {
-        elements.cameraPip.classList.remove('recording');
-        // 重新启用拖拽功能
-        if (state.cameraStream) {
-            setupCameraPipDrag();
-        }
-    }
     
     if (state.mediaRecorder.state === 'recording') {
         state.mediaRecorder.stop();
@@ -913,11 +945,6 @@ function updateUIForRecording() {
     });
     elements.pipSizeSlider.disabled = true;
     
-    // 隐藏画中画控件
-    if (state.cameraEnabled) {
-        elements.cameraPip.classList.add('recording');
-    }
-    
     elements.previewPlaceholder.innerHTML = `
         <i class="fas fa-circle" style="color: #ff3b30; animation: pulse 1.5s infinite;"></i>
         <p>录制中...</p>
@@ -951,11 +978,6 @@ function updateUIForStopped() {
         option.style.opacity = '1';
     });
     elements.pipSizeSlider.disabled = false;
-    
-    // 显示画中画控件
-    if (state.cameraEnabled) {
-        elements.cameraPip.classList.remove('recording');
-    }
     
     if (state.selectedSourceId) {
         elements.previewPlaceholder.innerHTML = `
@@ -999,10 +1021,6 @@ function saveSettings() {
         cameraEnabled: state.cameraEnabled,
         pipPosition: state.pipPosition,
         pipSize: state.pipSize,
-
-        cameraEnabled: state.cameraEnabled,
-        pipPosition: state.pipPosition,
-        pipSize: state.pipSize,
         
         // 样式设置
         pipStyle: state.pipStyle,
@@ -1022,6 +1040,12 @@ function loadSettings() {
             state.pipPosition = settings.pipPosition || 'bottom-right';
             state.pipSize = settings.pipSize || 160;
             
+            // 加载样式设置
+            state.pipStyle = settings.pipStyle || 'rounded';
+            state.showBorder = settings.showBorder !== false; // 默认true
+            state.showShadow = settings.showShadow !== false; // 默认true
+            state.borderColor = settings.borderColor || '#667eea';
+            
             // 应用设置
             elements.cameraToggle.checked = state.cameraEnabled;
             updatePipSizeDisplay();
@@ -1036,33 +1060,22 @@ function loadSettings() {
                 }
             });
             
-            // 如果摄像头启用且有权限，初始化摄像头
-            if (state.cameraEnabled && state.permissions.camera === 'granted') {
-                setTimeout(() => initCamera(), 1000); // 延迟初始化
-            }
-            // 加载样式设置
-            state.pipStyle = settings.pipStyle || 'rounded';
-            state.showBorder = settings.showBorder !== false; // 默认true
-            state.showShadow = settings.showShadow !== false; // 默认true
-            state.borderColor = settings.borderColor || '#667eea';
-            
             // 应用样式设置
-            const styleOptions = document.querySelectorAll('.style-option');
-            styleOptions.forEach(option => {
+            elements.styleOptions.forEach(option => {
                 if (option.dataset.style === state.pipStyle) {
                     option.classList.add('selected');
                 }
             });
             
-            document.getElementById('showBorder').checked = state.showBorder;
-            document.getElementById('showShadow').checked = state.showShadow;
-            document.getElementById('borderColor').value = state.borderColor;
-            document.getElementById('borderColorPicker').style.display = 
+            elements.showBorderCheckbox.checked = state.showBorder;
+            elements.showShadowCheckbox.checked = state.showShadow;
+            elements.borderColorPicker.value = state.borderColor;
+            elements.borderColorPickerContainer.style.display = 
                 state.showBorder ? 'block' : 'none';
             
-            // 如果摄像头启用，应用样式
-            if (state.cameraEnabled) {
-                updateCameraPipStyle();
+            // 如果摄像头启用且有权限，初始化摄像头
+            if (state.cameraEnabled && state.permissions.camera === 'granted') {
+                setTimeout(() => initCamera(), 1000); // 延迟初始化
             }
         }
     } catch (error) {
