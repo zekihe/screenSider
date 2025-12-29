@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale = 1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>桌面录制与画中画</title>
+</head>
+
+<body>
+    <div id="main-video-container">
+        <video id="main-video" autoplay playsinline></video>
+    </div>
+    <div id="pip-container">
+        <video id="pip-video" autoplay playsinline></video>
+    </div>
+    <div id="controls">
+        <button id="open-new-window">打卡新的</button>
+        <button id="start-record">开始录制</button>
+        <button id="stop-record" disabled>停止录制</button>
+        <button id="disable-mic">禁用麦克风</button>
+        <button id="close-camera">关闭摄像头</button>
+        <button id="close-desktop-record">关闭桌面录制</button>
+        <button id="mute-system-audio">系统音频静音</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
