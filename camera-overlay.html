@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: transparent;
+      overflow: hidden;
+    }
+
+    #camera-preview {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      transform: rotateY(180deg); /* 镜像效果，使画面更自然 */
+      -webkit-app-region: drag; /* 允许拖动整个摄像头窗口 */
+    }
+  </style>
+</head>
+<body>
+  <video id="camera-preview" autoplay playsinline></video>
+  <script src="camera-overlay.js"></script>
+</body>
+</html>

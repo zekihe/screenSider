@@ -3,6 +3,7 @@ const { ipcRenderer } = require('electron');
 // DOM Elements
 const recBtn = document.getElementById('rec-btn');
 const micBtn = document.getElementById('mic-btn');
+// const systemAudioBtn = document.getElementById('system-audio-btn'); // 系统音频按钮已移除
 const cameraBtn = document.getElementById('camera-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const statusText = document.querySelector('.status-text');
@@ -13,11 +14,13 @@ const testBtn = document.querySelector('.test-error-btn')
 // State
 let isRecording = false;
 let isMicEnabled = false;
+// let isSystemAudioEnabled = true; // 系统音频功能已移除
 let isCameraEnabled = false;
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordingStream = null; // Track the recording stream
-let audioStream = null; // Track the audio stream separately
+let audioStream = null; // Track the microphone audio stream
+// let systemAudioStream = null; // 系统音频流已移除
 let cameraStream = null; // Track the camera stream separately
 
 // Initialize
@@ -45,6 +48,7 @@ async function toggleRecording() {
 
 async function startRecording() {
   try {
+    
     // Get screen sources
     const sources = await ipcRenderer.invoke('get-sources');
     
@@ -69,7 +73,6 @@ async function startRecording() {
     if (!screenSource) {
       throw new Error('No screen source found');
     }
-    
     // Create media stream
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -86,8 +89,9 @@ async function startRecording() {
     
     // Store the recording stream
     recordingStream = stream;
+
     
-    // Always create audio stream and add to recording stream at start
+    // Always create microphone audio stream and add to recording stream at start
     // but disable it if mic is not enabled initially
     try {
       audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -102,6 +106,7 @@ async function startRecording() {
       isMicEnabled = false;
       micBtn.classList.remove('active');
       showErrorNotification('无法访问麦克风，请检查权限设置');
+      return
     }
     
     // Add camera stream if enabled
@@ -115,6 +120,7 @@ async function startRecording() {
         // Continue recording without camera
         cameraStream = null;
         showErrorNotification('无法访问摄像头，请检查权限设置');
+        return
       }
     }
     
@@ -244,12 +250,15 @@ async function toggleMic() {
   `)
 }
 
+// 系统音频录制功能已移除
+
 // 开启摄像头
 async function toggleCamera() {
   const wasEnabled = isCameraEnabled;
-  
+  console.log('toggleCamera--1')
   // 如果要启用摄像头，先检查权限
   if (!isCameraEnabled) {
+    console.log('toggleCamera--2')
     try {
       // 检查摄像头权限
       await navigator.mediaDevices.getUserMedia({ video: true });
@@ -257,6 +266,10 @@ async function toggleCamera() {
       // 权限检查通过，切换摄像头启用状态
       isCameraEnabled = true;
       cameraBtn.classList.add('active');
+      
+      // 显示摄像头窗口
+      ipcRenderer.send('toggle-camera-window', true);
+      console.log('toggleCamera--3')
       
       // 如果正在录制，动态处理摄像头轨道
       if (isRecording && recordingStream) {
@@ -278,6 +291,18 @@ async function toggleCamera() {
             showErrorNotification('无法启用摄像头，请检查权限设置');
           }
         }
+      } else {
+        // 如果没有录制，确保有摄像头流
+        if (!cameraStream) {
+          try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          } catch (error) {
+            console.error('启用摄像头出错:', error);
+            isCameraEnabled = false;
+            cameraBtn.classList.remove('active');
+            showErrorNotification('无法启用摄像头，请检查权限设置');
+          }
+        }
       }
     } catch (error) {
       console.error('无法访问摄像头，请检查权限设置:', error);
@@ -292,11 +317,21 @@ async function toggleCamera() {
     isCameraEnabled = false;
     cameraBtn.classList.remove('active');
     
-    // 如果正在录制，动态禁用摄像头轨道
-    if (isRecording && recordingStream && cameraStream) {
-      cameraStream.getTracks().forEach(track => {
-        track.enabled = false;
-      });
+    // 隐藏摄像头窗口
+    ipcRenderer.send('toggle-camera-window', false);
+    
+    // 处理摄像头流
+    if (cameraStream) {
+      // 如果正在录制，只是禁用摄像头轨道，而不是停止它们
+      if (isRecording) {
+        cameraStream.getTracks().forEach(track => {
+          track.enabled = false;
+        });
+      } else {
+        // 如果没有录制，完全停止摄像头流
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
     }
   }
 }
