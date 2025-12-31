@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>错误提示</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      user-select: none;
+    }
+    
+    .error-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .error-notification {
+      background-color: #FF3B30;
+      color: white;
+      padding: 0;
+      border-radius: 50px;
+      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    
+    .error-notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .error-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      /* min-width: 200px; */
+    }
+    
+    .error-message {
+      font-size: 14px;
+      font-weight: 500;
+      flex: 1;
+    }
+    
+    .error-close-btn {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 5px;
+      margin-left: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+    
+    .error-close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1);
+    }
+    
+    .error-close-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <div id="error-notification" class="error-notification">
+      <div class="error-content">
+        <span class="error-message" id="error-message"></span>
+        <button class="error-close-btn" id="error-close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const { ipcRenderer } = require('electron');
+    const errorNotification = document.getElementById('error-notification');
+    const errorMessage = document.getElementById('error-message');
+    const errorCloseBtn = document.getElementById('error-close-btn');
+    
+    let hideTimeout = null;
+    
+    // 显示错误提示
+    function showError(message, duration = 3000) {
+      // 设置错误消息
+      errorMessage.textContent = message;
+      
+      // 显示错误通知
+      errorNotification.classList.add('show');
+      
+      // 清除之前的定时器
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+      }
+      
+      // 设置自动隐藏定时器
+      hideTimeout = setTimeout(() => {
+        hideError();
+      }, duration);
+    }
+    
+    // 隐藏错误提示
+    function hideError() {
+      errorNotification.classList.remove('show');
+      
+      // 清除定时器
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+      
+      // 通知主进程关闭窗口
+      setTimeout(() => {
+        ipcRenderer.send('close-error-window');
+      }, 400);
+    }
+    
+    // 监听来自主进程的错误信息
+    ipcRenderer.on('show-error', (event, { message, duration }) => {
+      showError(message, duration);
+    });
+    
+    // 关闭按钮点击事件
+    errorCloseBtn.addEventListener('click', hideError);
+  </script>
+</body>
+</html>

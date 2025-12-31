@@ -8,6 +8,7 @@ const settingsBtn = document.getElementById('settings-btn');
 const statusText = document.querySelector('.status-text');
 const recIndicator = document.querySelector('.rec-indicator');
 const statusIndicator = document.querySelector('.status-indicator');
+const testBtn = document.querySelector('.test-error-btn')
 
 // State
 let isRecording = false;
@@ -26,6 +27,7 @@ async function init() {
   micBtn.addEventListener('click', toggleMic);
   cameraBtn.addEventListener('click', toggleCamera);
   settingsBtn.addEventListener('click', openSettings);
+  testBtn && testBtn.addEventListener('click', testFunction)
   
   // Set initial button states
   micBtn.classList.toggle('active', isMicEnabled);
@@ -99,6 +101,7 @@ async function startRecording() {
       audioStream = null;
       isMicEnabled = false;
       micBtn.classList.remove('active');
+      showErrorNotification('无法访问麦克风，请检查权限设置');
     }
     
     // Add camera stream if enabled
@@ -111,6 +114,7 @@ async function startRecording() {
         console.error('Error adding camera stream:', cameraError);
         // Continue recording without camera
         cameraStream = null;
+        showErrorNotification('无法访问摄像头，请检查权限设置');
       }
     }
     
@@ -136,9 +140,10 @@ async function startRecording() {
     updateUI();
     
   } catch (error) {
-    console.error('Error starting recording:', error);
-    statusText.textContent = 'Error';
-  }
+      console.error('Error starting recording:', error);
+      statusText.textContent = 'Error';
+      showErrorNotification('无法开始录制，请确保授予权限');
+    }
 }
 
 function stopRecording() {
@@ -182,78 +187,129 @@ function saveRecording(chunks) {
  * 切换麦克风的启用/禁用状态
  * 在录制过程中动态管理音频流，避免因音频轨道变化导致录制中断
  */
-function toggleMic() {
+async function toggleMic() {
   // 记录当前麦克风状态
   const wasEnabled = isMicEnabled;
   
-  // 切换麦克风启用状态
-  isMicEnabled = !isMicEnabled;
-  
-  // 更新按钮的视觉状态
-  micBtn.classList.toggle('active', isMicEnabled);
-  
-  console.log(`
-    isRecording: ${isRecording} \n
-    recordingStream: ${recordingStream}\n
-    isMicEnabled: ${isMicEnabled}\n
-    wasEnabled: ${wasEnabled}\n
-    audioStream: ${audioStream}
-  `)
-
-  // 如果正在录制，动态处理音频轨道的启用/禁用
-  if (isRecording && recordingStream && audioStream) {
-    // 控制音频轨道的启用状态，而不是添加/移除轨道
-    audioStream.getTracks().forEach(track => {
-      track.enabled = isMicEnabled;
-    });
-  }
-}
-
-function toggleCamera() {
-  const wasEnabled = isCameraEnabled;
-  isCameraEnabled = !isCameraEnabled;
-  cameraBtn.classList.toggle('active', isCameraEnabled);
-  
-  // If recording, dynamically enable/disable camera track
-  if (isRecording && recordingStream) {
-    if (isCameraEnabled && !wasEnabled) {
-      // Enable camera during recording
-      if (cameraStream) {
-        // If we already have a camera stream, just enable it
-        cameraStream.getTracks().forEach(track => {
+  // 如果要启用麦克风，先检查权限
+  if (!isMicEnabled) {
+    try {
+      // 检查麦克风权限
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // 权限检查通过，切换麦克风启用状态
+      isMicEnabled = true;
+      
+      // 更新按钮的视觉状态
+      micBtn.classList.add('active');
+      
+      // 如果正在录制，动态处理音频轨道
+      if (isRecording && recordingStream && audioStream) {
+        // 控制音频轨道的启用状态
+        audioStream.getTracks().forEach(track => {
           track.enabled = true;
         });
-      } else {
-        // Otherwise create a new camera stream
-        navigator.mediaDevices.getUserMedia({ video: true })
-          .then(stream => {
-            cameraStream = stream;
-            const cameraTrack = stream.getVideoTracks()[0];
+      }
+    } catch (error) {
+      console.error('无法访问麦克风，请检查权限设置:', error);
+      showErrorNotification('无法访问麦克风，请检查权限设置');
+      // 保持禁用状态
+      isMicEnabled = false;
+      micBtn.classList.remove('active');
+      return;
+    }
+  } else {
+    // 禁用麦克风
+    isMicEnabled = false;
+    micBtn.classList.remove('active');
+    
+    // 如果正在录制，动态禁用音频轨道
+    if (isRecording && recordingStream && audioStream) {
+      audioStream.getTracks().forEach(track => {
+        track.enabled = false;
+      });
+    }
+  }
+  
+  console.log(`
+    isRecording: ${isRecording} 
+    
+    recordingStream: ${recordingStream}
+    
+    isMicEnabled: ${isMicEnabled}
+    
+    wasEnabled: ${wasEnabled}
+    
+    audioStream: ${audioStream}
+  `)
+}
+
+// 开启摄像头
+async function toggleCamera() {
+  const wasEnabled = isCameraEnabled;
+  
+  // 如果要启用摄像头，先检查权限
+  if (!isCameraEnabled) {
+    try {
+      // 检查摄像头权限
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      // 权限检查通过，切换摄像头启用状态
+      isCameraEnabled = true;
+      cameraBtn.classList.add('active');
+      
+      // 如果正在录制，动态处理摄像头轨道
+      if (isRecording && recordingStream) {
+        if (cameraStream) {
+          // 如果已经有摄像头流，直接启用
+          cameraStream.getTracks().forEach(track => {
+            track.enabled = true;
+          });
+        } else {
+          // 否则创建新的摄像头流
+          try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const cameraTrack = cameraStream.getVideoTracks()[0];
             recordingStream.addTrack(cameraTrack);
-          })
-          .catch(error => {
-            console.error('Error enabling camera during recording:', error);
-            // Revert the state if we couldn't enable camera
+          } catch (error) {
+            console.error('录制过程中启用摄像头出错:', error);
             isCameraEnabled = false;
             cameraBtn.classList.remove('active');
-          });
+            showErrorNotification('无法启用摄像头，请检查权限设置');
+          }
+        }
       }
-    } else if (!isCameraEnabled && wasEnabled) {
-      // Disable camera during recording
-      if (cameraStream) {
-        // Instead of removing tracks from recording stream or stopping the stream,
-        // just disable the camera tracks
-        cameraStream.getTracks().forEach(track => {
-          track.enabled = false;
-        });
-      }
+    } catch (error) {
+      console.error('无法访问摄像头，请检查权限设置:', error);
+      showErrorNotification('无法访问摄像头，请检查权限设置');
+      // 保持禁用状态
+      isCameraEnabled = false;
+      cameraBtn.classList.remove('active');
+      return;
+    }
+  } else {
+    // 禁用摄像头
+    isCameraEnabled = false;
+    cameraBtn.classList.remove('active');
+    
+    // 如果正在录制，动态禁用摄像头轨道
+    if (isRecording && recordingStream && cameraStream) {
+      cameraStream.getTracks().forEach(track => {
+        track.enabled = false;
+      });
     }
   }
 }
 
 function openSettings() {
   console.log('Settings clicked');
+
+  showErrorNotification('此功能建设中...');
   // Implement settings dialog
+}
+
+function testFunction () {
+  showErrorNotification('测试功能');
 }
 
 // UI Updates
@@ -270,6 +326,29 @@ function updateUI() {
     statusIndicator.classList.remove('active');
   }
 }
+
+// Error Notification Functions
+/**
+ * 显示错误提示通知
+ * @param {string} message - 错误消息内容
+ * @param {number} duration - 显示持续时间（毫秒），默认3000ms
+ */
+function showErrorNotification(message, duration = 3000) {
+  // 通过IPC发送错误消息到主进程
+  ipcRenderer.send('show-error', { message, duration });
+}
+
+/**
+ * 隐藏错误提示通知
+ */
+function hideErrorNotification() {
+  // 通过IPC通知主进程关闭错误窗口
+  ipcRenderer.send('close-error-window');
+}
+
+// 确保在全局作用域中可用
+globalThis.showErrorNotification = showErrorNotification;
+globalThis.hideErrorNotification = hideErrorNotification;
 
 // Window Controls
 ipcRenderer.on('window-controls', (event, args) => {

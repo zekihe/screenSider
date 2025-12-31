@@ -28,10 +28,24 @@ body {
 
 /* Status Indicator */
 .status-indicator {
+  position: relative;
   display: flex;
   align-items: center;
+  padding: 0 20px;
   gap: 10px;
   color: #fff;
+}
+
+.status-indicator::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: block;
+  height: 24px;
+  width: 1px;
+  background-color: #434343;
 }
 
 .status-dot {
@@ -56,17 +70,7 @@ body {
   display: flex;
   gap: 20px;
 }
-.controls::before {
-  content: '';
-  position: absolute;
-  left: -20px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: block;
-  height: 24px;
-  width: 1px;
-  background-color: #434343;
-}
+
 
 .control-btn {
   background: none;
@@ -178,3 +182,5 @@ body {
 .container button {
   -webkit-app-region: no-drag;
 }
+
+/* 错误提示现在使用独立窗口，不再需要这里的样式 */
