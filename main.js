@@ -10,6 +10,7 @@ let mainWindow;
 let errorWindow;
 let cameraWindow;
 let screenSelectorWindow;
+let settingsWindow;
 let screenSelectorCallback = null;
 
 // 创建错误提示窗口
@@ -369,5 +370,73 @@ ipcMain.on('screen-select-cancel', () => {
     // Close the screen selector window
     if (screenSelectorWindow) {
         screenSelectorWindow.close();
+    }
+});
+
+// 创建设置窗口
+function createSettingsWindow() {
+    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    
+    settingsWindow = new BrowserWindow({
+        width: 300,
+        height: 200,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        resizable: false,
+        movable: true,
+        show: false,
+        x: Math.floor((screenWidth - 300) / 2),
+        y: Math.floor((screenHeight - 200) / 2),
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            enableRemoteModule: true
+        }
+    });
+
+    settingsWindow.loadFile('settings.html');
+    
+    // Open DevTools in development environment only
+    if (isDev()) {
+        settingsWindow.webContents.openDevTools();
+    }
+    
+    settingsWindow.on('closed', () => {
+        settingsWindow = null;
+    });
+}
+
+// 显示设置窗口
+function showSettingsWindow() {
+    if (!settingsWindow) {
+        createSettingsWindow();
+    }
+    
+    settingsWindow.show();
+}
+
+// 监听设置窗口请求
+ipcMain.on('show-settings-window', (event, currentFormat) => {
+    showSettingsWindow();
+    
+    // 发送当前选择的格式到设置窗口
+    settingsWindow.webContents.once('did-finish-load', () => {
+        settingsWindow.webContents.send('set-selected-format', currentFormat);
+    });
+});
+
+// 监听设置窗口关闭
+ipcMain.on('settings-window-close', () => {
+    if (settingsWindow) {
+        settingsWindow.hide();
+    }
+});
+
+// 监听格式选择变化
+ipcMain.on('format-selected', (event, selectedFormat) => {
+    // 发送格式选择变化到主窗口
+    if (mainWindow) {
+        mainWindow.webContents.send('format-selected', selectedFormat);
     }
 });

@@ -21,7 +21,8 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  width: 500px;
+  width: auto;
+  min-width: 400px;
   height: 80px;
   position: relative;
 }
@@ -101,6 +102,37 @@ body {
 
 .control-btn.active {
   color: #fff;
+}
+
+/* Format Select */
+.format-select {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+  -webkit-app-region: no-drag;
+}
+
+.format-select:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.format-select:focus {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.format-select option {
+  background: rgba(30, 30, 30, 0.9);
+  color: #fff;
+  border: none;
+  padding: 10px;
 }
 
 /* Recording Button */

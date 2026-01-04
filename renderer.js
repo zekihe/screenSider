@@ -7,6 +7,7 @@ const micBtn = document.getElementById('mic-btn');
 const cameraBtn = document.getElementById('camera-btn');
 const windowSwitchBtn = document.getElementById('window-switch-btn');
 const settingsBtn = document.getElementById('settings-btn');
+// const formatSelect = document.getElementById('format-select'); // 格式选择已移到设置窗口
 const statusText = document.querySelector('.status-text');
 const recIndicator = document.querySelector('.rec-indicator');
 const statusIndicator = document.querySelector('.status-indicator');
@@ -24,21 +25,63 @@ let audioStream = null; // Track the microphone audio stream
 // let systemAudioStream = null; // 系统音频流已移除
 let cameraStream = null; // Track the camera stream separately
 let currentRecordingSource = null; // 当前选择的录制源，用于直接录制
+let supportedFormats = []; // 支持的视频格式
+let selectedFormat = 'mp4'; // 默认选择的格式
 
 // Initialize
 async function init() {
+  // Detect supported video formats
+  detectSupportedFormats();
+  
   // Set up event listeners
   recBtn.addEventListener('click', toggleRecording);
   micBtn.addEventListener('click', toggleMic);
   cameraBtn.addEventListener('click', toggleCamera);
   windowSwitchBtn && windowSwitchBtn.addEventListener('click', showScreenSelector);
   settingsBtn && settingsBtn.addEventListener('click', openSettings);
-  testBtn && testBtn.addEventListener('click', testFunction)
+  testBtn && testBtn.addEventListener('click', testFunction);
+  // formatSelect && formatSelect.addEventListener('change', handleFormatChange); // 格式选择已移到设置窗口
+  
+  // Set up IPC listeners for format selection from settings window
+  ipcRenderer.on('format-selected', (event, format) => {
+    selectedFormat = format;
+    console.log('Selected format changed to:', selectedFormat);
+  });
   
   // Set initial button states
   micBtn.classList.toggle('active', isMicEnabled);
   cameraBtn.classList.toggle('active', isCameraEnabled);
+  
+  // Format options will be updated in settings window
 }
+
+// Detect supported video formats
+function detectSupportedFormats() {
+  // Check for common video formats
+  const formatsToCheck = [
+    { name: 'webm', mimeType: 'video/webm;codecs=vp9' },
+    { name: 'webm', mimeType: 'video/webm;codecs=vp8' },
+    { name: 'mp4', mimeType: 'video/mp4;codecs=h264' },
+    { name: 'mp4', mimeType: 'video/mp4;codecs=avc1' },
+    { name: 'webm', mimeType: 'video/webm' },
+    { name: 'mp4', mimeType: 'video/mp4' }
+  ];
+  
+  supportedFormats = formatsToCheck.filter(format => {
+    return MediaRecorder.isTypeSupported(format.mimeType);
+  });
+  
+  console.log('Supported video formats:', supportedFormats);
+  
+  // Update selectedFormat if default is not supported
+  if (!supportedFormats.some(format => format.name === selectedFormat)) {
+    selectedFormat = supportedFormats[0]?.name || 'webm';
+  }
+}
+
+// Update format options function is now handled in settings window
+
+// Handle format selection change is now handled in settings window
 
 // Recording Functions 开始录制桌面
 async function toggleRecording() {
@@ -142,8 +185,12 @@ async function startRecording() {
     }
     
     // Start recording
+    // Find the best MIME type for the selected format
+    const formatMimeTypes = supportedFormats.filter(format => format.name === selectedFormat);
+    const mimeType = formatMimeTypes[0]?.mimeType || 'video/webm;codecs=vp9';
+    
     mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'video/webm;codecs=vp9'
+      mimeType: mimeType
     });
     
     mediaRecorder.ondataavailable = (event) => {
@@ -194,11 +241,15 @@ function stopRecording() {
 }
 
 function saveRecording(chunks) {
-  const blob = new Blob(chunks, { type: 'video/webm' });
+  // Get the MIME type for the selected format
+  const formatMimeTypes = supportedFormats.filter(format => format.name === selectedFormat);
+  const mimeType = formatMimeTypes[0]?.mimeType || 'video/webm';
+  
+  const blob = new Blob(chunks, { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `recording-${Date.now()}.webm`;
+  a.download = `recording-${Date.now()}.${selectedFormat}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -355,9 +406,8 @@ async function toggleCamera() {
 
 function openSettings() {
   console.log('Settings clicked');
-
-  showErrorNotification('此功能建设中...');
-  // Implement settings dialog
+  // 打开设置窗口并传递当前选择的格式
+  ipcRenderer.send('show-settings-window', selectedFormat);
 }
 
 function testFunction () {

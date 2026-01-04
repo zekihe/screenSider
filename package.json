@@ -1,26 +1,19 @@
 {
-  "name": "screen-recorder-pro",
-  "version": "1.0.0",
-  "description": "screenshot",
+  "name": "screen-recorder",
+  "version": "0.0.2",
+  "description": "screen recorder",
   "main": "main.js",
   "scripts": {
     "dev": "NODE_ENV=development electron .",
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
   },
   "build": {
-    "appId": "com.screenrecorderpro.app",
-    "productName": "Screen Recorder Pro",
-    "mac": {
-      "category": "public.app-category.utilities"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+    "extends": "./build/electron-builder.json"
   },
   "author": "zeke ho",
   "license": "ISC",

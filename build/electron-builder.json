@@ -1,0 +1,45 @@
+{
+  "appId": "com.screenrecorder.app",
+  "productName": "Screen Recorder",
+  "directories": {
+    "output": "dist",
+    "buildResources": "build"
+  },
+  "files": [
+    "*.html",
+    "*.js",
+    "*.css",
+    "activate-window.scpt",
+    "preview/"
+  ],
+  "exclude": [
+    "node_modules/electron",
+    "node_modules/electron-builder",
+    ".git",
+    ".gitignore",
+    "build/electron-builder.json"
+  ],
+  "mac": {
+    "category": "public.app-category.utilities",
+    "target": [
+      "dmg",
+      "zip"
+    ]
+  },
+  "win": {
+    "target": [
+      "nsis",
+      "portable",
+      "zip"
+    ],
+    "icon": "build/icon.ico"
+  },
+  "linux": {
+    "target": [
+      "AppImage",
+      "deb",
+      "rpm"
+    ],
+    "category": "Utility"
+  }
+}
