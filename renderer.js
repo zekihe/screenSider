@@ -5,6 +5,7 @@ const recBtn = document.getElementById('rec-btn');
 const micBtn = document.getElementById('mic-btn');
 // const systemAudioBtn = document.getElementById('system-audio-btn'); // 系统音频按钮已移除
 const cameraBtn = document.getElementById('camera-btn');
+const windowSwitchBtn = document.getElementById('window-switch-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const statusText = document.querySelector('.status-text');
 const recIndicator = document.querySelector('.rec-indicator');
@@ -22,6 +23,7 @@ let recordingStream = null; // Track the recording stream
 let audioStream = null; // Track the microphone audio stream
 // let systemAudioStream = null; // 系统音频流已移除
 let cameraStream = null; // Track the camera stream separately
+let currentRecordingSource = null; // 当前选择的录制源，用于直接录制
 
 // Initialize
 async function init() {
@@ -29,7 +31,8 @@ async function init() {
   recBtn.addEventListener('click', toggleRecording);
   micBtn.addEventListener('click', toggleMic);
   cameraBtn.addEventListener('click', toggleCamera);
-  settingsBtn.addEventListener('click', openSettings);
+  windowSwitchBtn && windowSwitchBtn.addEventListener('click', showScreenSelector);
+  settingsBtn && settingsBtn.addEventListener('click', openSettings);
   testBtn && testBtn.addEventListener('click', testFunction)
   
   // Set initial button states
@@ -48,30 +51,44 @@ async function toggleRecording() {
 
 async function startRecording() {
   try {
+    let screenSource;
     
-    // Get screen sources
-    const sources = await ipcRenderer.invoke('get-sources');
-    
-    // Select the first screen source
-    let screenSource = sources.find(source => source.name === 'Entire Screen');
-    
-    // If not found, try to find any screen source
-    if (!screenSource) {
-      screenSource = sources.find(source => source.name === 'Screen 1');
+    // 如果已经有选择的录制源，直接使用
+    if (currentRecordingSource) {
+      screenSource = currentRecordingSource;
+    } else {
+      // 否则获取默认录制源（优先获取屏幕，其次是窗口）
+      const sources = await ipcRenderer.invoke('get-sources');
+      if (sources.length === 0) {
+        showErrorNotification('未找到可用的录制源');
+        return;
+      }
+      
+      // 优先选择屏幕作为默认录制源
+      screenSource = sources.find(source => 
+        source.type === 'screen' || source.id.startsWith('screen')
+      );
+      
+      // 如果没有屏幕源，选择第一个窗口源
+      if (!screenSource) {
+        screenSource = sources.find(source => 
+          source.type === 'window' || source.id.startsWith('window')
+        );
+      }
+      
+      // 如果还是没有找到源，使用第一个可用源
+      if (!screenSource) {
+        screenSource = sources[0];
+      }
+      
+      // 保存当前选择的录制源
+      currentRecordingSource = screenSource;
     }
     
-    // If still not found, try to find any source with type 'screen'
     if (!screenSource) {
-      screenSource = sources.find(source => source.type === 'screen');
-    }
-    
-    // If still not found, use the first source available
-    if (!screenSource && sources.length > 0) {
-      screenSource = sources[0];
-    }
-    
-    if (!screenSource) {
-      throw new Error('No screen source found');
+      // 没有找到可用的录制源
+      showErrorNotification('未找到可用的录制源');
+      return;
     }
     // Create media stream
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -389,6 +406,26 @@ globalThis.hideErrorNotification = hideErrorNotification;
 ipcRenderer.on('window-controls', (event, args) => {
   // Handle window control events
 });
+
+// Show screen selector for window switching
+function showScreenSelector() {
+  try {
+    // Show screen selector window
+    ipcRenderer.send('show-screen-selector');
+    
+    // Wait for user to select a screen source
+    ipcRenderer.once('screen-selected', (event, selectedSource) => {
+      if (selectedSource) {
+        console.log('Window switched to:', selectedSource.name);
+        currentRecordingSource = selectedSource; // 更新当前录制源
+        // statusText.textContent = `Selected: ${selectedSource.name}`;
+      }
+    });
+  } catch (error) {
+    console.error('Error showing screen selector:', error);
+    showErrorNotification('无法显示屏幕选择器');
+  }
+}
 
 // Initialize app
 init();

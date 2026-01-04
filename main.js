@@ -1,9 +1,16 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, screen } = require('electron');
 const path = require('path');
 
+// 检查当前是否为开发环境
+const isDev = () => {
+    return process.env.NODE_ENV === 'development';
+};
+
 let mainWindow;
 let errorWindow;
 let cameraWindow;
+let screenSelectorWindow;
+let screenSelectorCallback = null;
 
 // 创建错误提示窗口
 function createErrorWindow() {
@@ -29,8 +36,10 @@ function createErrorWindow() {
 
     errorWindow.loadFile('error.html');
     
-    // 开发时可启用调试工具
-    // errorWindow.webContents.openDevTools();
+    // Open DevTools in development environment only
+    if (isDev()) {
+        errorWindow.webContents.openDevTools();
+    }
     
     errorWindow.on('closed', () => {
         errorWindow = null;
@@ -65,8 +74,10 @@ function createCameraWindow() {
 
     cameraWindow.loadFile('camera-overlay.html');
     
-    // 开发时可启用调试工具
-    // cameraWindow.webContents.openDevTools();
+    // Open DevTools in development environment only
+    if (isDev()) {
+        cameraWindow.webContents.openDevTools();
+    }
     
     cameraWindow.on('closed', () => {
         cameraWindow = null;
@@ -88,8 +99,6 @@ function createWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
     
     mainWindow = new BrowserWindow({
-        // width: 1200,
-        // height: 400,
         width: 500,
         height: 80,
         frame: false,
@@ -108,8 +117,11 @@ function createWindow() {
 
     mainWindow.loadFile('index.html');
   
-    // Open DevTools
-    // mainWindow.webContents.openDevTools();
+    // Open DevTools in development environment only
+    if (isDev()) {
+        mainWindow.setBounds({ width: 1200, height: 400 })
+        mainWindow.webContents.openDevTools();
+    }
   
     // 允许窗口被拖动
     mainWindow.webContents.on('did-finish-load', () => {
@@ -224,5 +236,138 @@ ipcMain.on('camera-stopped', () => {
     // 发送停止信息到主窗口
     if (mainWindow) {
         mainWindow.webContents.send('camera-stopped');
+    }
+});
+
+// 创建屏幕选择窗口
+function createScreenSelectorWindow(callback) {
+    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    
+    screenSelectorWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        frame: false,
+        resizable: true,
+        movable: true,
+        show: false,
+        x: Math.floor((screenWidth - 800) / 2),
+        y: Math.floor((screenHeight - 600) / 2),
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            enableRemoteModule: true
+        }
+    });
+    
+    screenSelectorWindow.loadFile('screen-selector.html');
+    
+    // Open DevTools in development environment only
+    if (isDev()) {
+        screenSelectorWindow.webContents.openDevTools();
+    }
+    
+    // Store callback
+    screenSelectorCallback = callback;
+    
+    screenSelectorWindow.on('closed', () => {
+        screenSelectorWindow = null;
+        screenSelectorCallback = null;
+    });
+}
+
+// 显示屏幕选择窗口
+function showScreenSelectorWindow(callback) {
+    if (!screenSelectorWindow) {
+        createScreenSelectorWindow(callback);
+    } else {
+        screenSelectorCallback = callback;
+    }
+    
+    screenSelectorWindow.show();
+}
+
+// 监听屏幕选择请求
+ipcMain.on('show-screen-selector', (event) => {
+    showScreenSelectorWindow((selectedSource) => {
+        if (selectedSource) {
+            event.sender.send('screen-selected', selectedSource);
+        }
+    });
+});
+
+// 监听屏幕选择窗口请求屏幕源
+ipcMain.on('request-sources', async (event) => {
+    try {
+        const sources = await desktopCapturer.getSources({
+            types: ['window', 'screen'],
+            thumbnailSize: { width: 1920, height: 1080 },
+            audio: true
+        });
+        event.sender.send('screen-sources', sources);
+    } catch (error) {
+        console.error('Error getting screen sources:', error);
+        event.sender.send('screen-sources', []);
+    }
+});
+
+// 监听屏幕选择窗口确认选择
+ipcMain.on('screen-select-confirm', (event, selectedSource) => {
+    if (screenSelectorCallback) {
+        screenSelectorCallback(selectedSource);
+        screenSelectorCallback = null;
+    }
+    // console.log('screen-select-confirm', selectedSource)
+    // 先保存选择的窗口信息
+    const isWindowSource = selectedSource.type === 'window' || 
+        (selectedSource.id && selectedSource.id.startsWith('window'));
+    const selectedWindowName = isWindowSource ? selectedSource.name : null;
+    
+    // 先关闭屏幕选择器窗口，释放焦点
+    if (screenSelectorWindow) {
+        screenSelectorWindow.close();
+    }
+    
+    // 等待屏幕选择器窗口关闭后，再尝试激活目标窗口
+    if (isWindowSource && selectedWindowName) {
+        // 添加一个短暂的延迟，确保屏幕选择器窗口完全关闭
+        setTimeout(() => {
+            try {
+                const { exec } = require('child_process');
+                
+                // 使用独立的AppleScript文件来激活窗口
+                // 这比通过命令行传递复杂脚本更可靠
+                const scriptPath = path.join(__dirname, 'activate-window.scpt');
+                const escapedWindowName = selectedWindowName.replace(/"/g, '\\"'); // 转义双引号
+                
+                // 执行独立的AppleScript文件，传递窗口名称作为参数
+                const appleScriptCommand = `osascript "${scriptPath}" "${escapedWindowName}"`;
+                
+                // 执行AppleScript并添加详细调试信息
+                exec(appleScriptCommand, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error('Error activating window:', error);
+                        console.error('AppleScript stderr:', stderr);
+                        console.error('Executed AppleScript command:', appleScriptCommand);
+                    } else {
+                        console.log('Window activation result:', stdout.trim());
+                    }
+                });
+            } catch (error) {
+                console.error('Error in window activation logic:', error);
+            }
+        }, 100); // 100ms延迟，确保屏幕选择器窗口完全关闭
+    }
+});
+
+// 监听屏幕选择窗口取消选择
+ipcMain.on('screen-select-cancel', () => {
+    if (screenSelectorCallback) {
+        screenSelectorCallback(null);
+        screenSelectorCallback = null;
+    }
+    
+    // Close the screen selector window
+    if (screenSelectorWindow) {
+        screenSelectorWindow.close();
     }
 });

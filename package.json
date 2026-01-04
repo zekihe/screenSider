@@ -4,6 +4,7 @@
   "description": "screenshot",
   "main": "main.js",
   "scripts": {
+    "dev": "NODE_ENV=development electron .",
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "electron-builder"
@@ -21,7 +22,7 @@
       "target": "AppImage"
     }
   },
-  "author": "zeke",
+  "author": "zeke ho",
   "license": "ISC",
   "devDependencies": {
     "electron": "^39.2.7",
