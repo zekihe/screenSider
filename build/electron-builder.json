@@ -10,15 +10,12 @@
     "*.js",
     "*.css",
     "activate-window.scpt",
-    "preview/"
+    "preview/",
+    "node_modules/**/*",
+    "!node_modules/electron/**",
+    "!node_modules/electron-builder/**"
   ],
-  "exclude": [
-    "node_modules/electron",
-    "node_modules/electron-builder",
-    ".git",
-    ".gitignore",
-    "build/electron-builder.json"
-  ],
+  "disableDefaultIgnoredFiles": false,
   "mac": {
     "category": "public.app-category.utilities",
     "target": [
