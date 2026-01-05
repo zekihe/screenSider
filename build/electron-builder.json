@@ -2,7 +2,7 @@
   "appId": "com.screenrecorder.app",
   "productName": "Screen Recorder",
   "directories": {
-    "output": "dist",
+    "output": "release/${version}",
     "buildResources": "build"
   },
   "files": [
@@ -11,7 +11,7 @@
     "*.css",
     "activate-window.scpt",
     "preview/",
-    "node_modules/**/*",
+    "!node_modules/**/*",
     "!node_modules/electron/**",
     "!node_modules/electron-builder/**"
   ],
@@ -19,9 +19,22 @@
   "mac": {
     "category": "public.app-category.utilities",
     "target": [
-      "dmg",
-      "zip"
-    ]
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "artifactName": "${productName}-${version}-mac-${arch}-Installer.${ext}",
+    "hardenedRuntime": true,
+    "entitlements": "entitlements.mac.plist",
+    "entitlementsInherit": "entitlements.mac.plist",
+    "extendInfo": {
+      "NSCameraUsageDescription": "This app needs access to your camera to enable picture-in-picture recording.",
+      "NSMicrophoneUsageDescription": "This app needs access to your microphone to record audio.",
+      "NSDesktopFolderUsageDescription": "This app needs access to your desktop to save recording files.",
+      "NSDocumentsFolderUsageDescription": "This app needs access to your documents folder to save recording files.",
+      "NSScreenCaptureUsageDescription": "This app needs access to your screen to record video."
+    }
   },
   "win": {
     "target": [
