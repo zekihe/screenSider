@@ -1,5 +1,31 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, screen, systemPreferences } = require('electron');
 const path = require('path');
+
+// const cameraStatus = systemPreferences.getMediaAccessStatus('camera');
+// const microphoneStatus = systemPreferences.getMediaAccessStatus('microphone');
+// const screenStatus = systemPreferences.getMediaAccessStatus('screen');
+// console.log(`摄像头权限状态: ${cameraStatus}`);
+// console.log(`麦克风权限状态: ${microphoneStatus}`);
+// console.log(`屏幕录制权限状态: ${screenStatus}`);
+
+async function requestCameraAccess() {
+   try {
+   } catch (error) {
+       console.error('申请摄像头权限失败:', error);
+   }
+   try {
+       const isAuthorized = await systemPreferences.askForMediaAccess('screen');
+        console.log(`屏幕录制状态: ${isAuthorized}`);
+       if (isAuthorized) {
+           console.log('摄像头权限已授权');
+       } else {
+           console.log('用户拒绝了摄像头权限');
+       }
+   } catch (error) {
+       console.error('申请摄像头权限失败:', error);
+   }
+}
+requestCameraAccess();
 
 // 检查当前是否为开发环境
 const isDev = () => {
@@ -134,9 +160,29 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+
+
+
+    const session = mainWindow.webContents.session;
+    // 清除session的HTTP缓存
+    session.defaultSession.clearCache();
 }
 
-app.whenReady().then(createWindow);
+function checkAndApplyScreenShareAccessPrivilege() {
+    if (process.platform === "linux") return;
+    const screenPrivilege = systemPreferences.getMediaAccessStatus("screen");
+    if (screenPrivilege !== "granted") {
+        if (process.platform === "darwin") {
+            console.log('当前应用无屏幕捕获权限，即将跳转至授权页面，请授权后重新启动应用。')
+            execCommond(`open x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture`);
+        }
+    }
+}
+
+app.whenReady().then(async () => {
+    createWindow();
+    // checkAndApplyScreenShareAccessPrivilege();
+});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -149,6 +195,37 @@ app.on('activate', () => {
         createWindow();
     }
 });
+
+ipcMain.handle('ask-permissions', async (event, type) => {
+    console.log('ask-permissions', type)
+    if (!type) return false
+    // camera  microphone
+    const isAuthorized = await systemPreferences.askForMediaAccess(type);
+    if (isAuthorized) {
+        console.log(type + '权限已授权');
+    } else {
+        console.log(`用户拒绝了${type}权限`);
+    }
+    return isAuthorized
+})
+
+ipcMain.handle('get-permissions', async (event, type) => {
+    console.log('get-permissions', type)
+    if (!type) return false
+    // camera  microphone  screen
+    const status = await systemPreferences.getMediaAccessStatus(type);
+    console.log('getMediaAccessStatus ' + type, status);
+    // if (status === 'not-determined') {
+    // } else if (status === 'granted') {
+    //     console.log(`用户拒绝了${type}权限`);
+    // } else if (status === 'denied') {
+    //     console.log(`用户拒绝了${type}权限`);
+    // } else if (status === 'restricted') {
+    //     console.log(`用户拒绝了${type}权限`);
+    // }
+    return status === 'granted'
+})
+
 
 // 处理录制请求
 ipcMain.handle('get-sources', async () => {
