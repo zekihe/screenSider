@@ -1,0 +1,193 @@
+* {
+  margin: 0
+  padding: 0
+  box-sizing: border-box
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif
+  // background-color: #1a1a1a
+  color: #ffffff
+  overflow: hidden
+}
+
+.screen-selector-container {
+  width: 100%
+  height: 100vh
+  display: flex
+  flex-direction: column
+
+  .header {
+    padding: 24px 24px 8px
+
+    h1 {
+      font-size: 20px
+      font-weight: 500
+      margin-bottom: 8px
+    }
+
+    p {
+      font-size: 14px
+      color: #b0b0b0
+    }
+  }
+
+  .tabs {
+    display: flex
+    padding: 0 24px
+    border-bottom: 1px solid #404040
+
+    .tab {
+      padding: 16px 24px 12px
+      font-size: 14px
+      cursor: pointer
+      color: #b0b0b0
+      border-bottom: 2px solid transparent
+      transition: all 0.2s ease
+
+      &.active {
+        color: #ffffff
+        border-bottom-color: #0078d4
+      }
+
+      &:hover {
+        color: #ffffff
+      }
+    }
+  }
+
+  .content {
+    flex: 1
+    padding: 24px
+    overflow-y: auto
+
+    .loading {
+      display: flex
+      justify-content: center
+      align-items: center
+      height: 200px
+      color: #b0b0b0
+      font-size: 14px
+    }
+
+    .no-sources {
+      display: flex
+      justify-content: center
+      align-items: center
+      height: 200px
+      color: #b0b0b0
+      font-size: 14px
+    }
+
+    .source-grid {
+      display: grid
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr))
+      gap: 20px
+
+      .source-item {
+        border: 2px solid transparent
+        border-radius: 4px
+        overflow: hidden
+        cursor: pointer
+        transition: all 0.2s ease
+        background-color: #2d2d2d
+
+        &:hover {
+          border-color: #0078d4
+        }
+
+        &.selected {
+          border-color: #0078d4
+          box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.3)
+        }
+
+        .source-thumbnail {
+          width: 100%
+          aspect-ratio: 16/9
+          background-color: #1e1e1e
+          display: flex
+          align-items: center
+          justify-content: center
+          position: relative
+          overflow: hidden
+
+          img {
+            width: 100%
+            height: 100%
+            object-fit: contain
+          }
+        }
+
+        .source-name {
+          padding: 16px
+          font-size: 14px
+          background-color: #2d2d2d
+          color: #ffffff
+        }
+      }
+    }
+  }
+
+  .footer {
+    padding: 24px
+    background-color: #1a1a1a
+    border-top: 1px solid #404040
+    display: flex
+    justify-content: space-between
+    align-items: center
+
+    .audio-note {
+      font-size: 14px
+      color: #b0b0b0
+      display: flex
+      align-items: center
+      gap: 8px
+
+      .audio-icon {
+        width: 16px
+        height: 16px
+        background-color: #b0b0b0
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%)
+      }
+    }
+
+    .btn-group {
+      display: flex
+      gap: 12px
+
+      .btn {
+        padding: 10px 24px
+        border: none
+        border-radius: 4px
+        font-size: 14px
+        font-weight: 500
+        cursor: pointer
+        transition: all 0.2s ease
+        min-width: 100px
+
+        &.cancel {
+          background-color: #333333
+          color: #ffffff
+
+          &:hover {
+            background-color: #404040
+          }
+        }
+
+        &.share {
+          background-color: #0078d4
+          color: #ffffff
+
+          &:hover {
+            background-color: #005a9e
+          }
+
+          &:disabled {
+            background-color: #404040
+            cursor: not-allowed
+          }
+        }
+      }
+    }
+  }
+}

@@ -32,7 +32,7 @@ async function startCameraPreview() {
       await stopCameraPreview();
     }
 
-    // Get camera stream
+    // Get camera stream with permission check
     cameraStream = await navigator.mediaDevices.getUserMedia({ 
       video: { 
         width: { ideal: 320 }, 
@@ -48,7 +48,19 @@ async function startCameraPreview() {
     ipcRenderer.send('camera-ready');
   } catch (error) {
     console.error('Failed to start camera preview:', error);
-    ipcRenderer.send('camera-error', error.message);
+    
+    // Provide user-friendly error messages based on error type
+    let errorMessage = '无法访问摄像头';
+    if (error.name === 'NotAllowedError') {
+      errorMessage = '摄像头权限被拒绝，请在系统设置中允许访问';
+    } else if (error.name === 'NotFoundError') {
+      errorMessage = '未检测到摄像头设备';
+    } else if (error.name === 'NotReadableError') {
+      errorMessage = '摄像头正在被其他应用使用';
+    }
+    
+    // Send detailed error message to main process
+    ipcRenderer.send('camera-error', errorMessage);
     throw error;
   }
 }

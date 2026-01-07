@@ -1,5 +1,129 @@
 # Screen Recorder - Release Notes
 
+## Version 1.0.0 (2026-01-07)
+
+### 📋 版本概述
+这是Screen Recorder的稳定版发布，使用Electron + React + electron-vite进行了全面重构，提升了代码质量和可维护性。
+
+### ✨ 主要功能
+- **核心录制功能**：全屏录制、窗口录制、音频录制、摄像头画中画
+- **重构架构**：使用React组件化开发，提升代码复用性
+- **现代化构建**：采用electron-vite作为构建工具，提升开发效率
+- **路由管理**：实现异步路由加载，优化应用性能
+- **代码质量**：集成ESLint和Prettier，保证代码规范
+- **安全通信**：使用contextBridge进行主进程与渲染进程的安全通信
+
+### 🚀 版本变更
+1. **架构重构**
+   - 使用React替代纯HTML开发，采用组件化架构
+   - 引入electron-vite作为现代化构建工具
+   - 实现异步路由加载，提升应用性能
+   - 优化项目目录结构，提高代码可维护性
+
+2. **功能优化**
+   - 重构录制控制逻辑，增强稳定性
+   - 优化摄像头画中画窗口实现
+   - 改进设置窗口的用户体验
+   - 增强错误处理机制
+
+3. **代码质量提升**
+   - 集成ESLint进行代码质量检查
+   - 使用Prettier保证代码格式一致性
+   - 修复潜在的安全问题
+   - 优化主进程与渲染进程的通信方式
+
+### 📦 安装说明
+
+```bash
+# 克隆仓库
+git clone <repository-url>
+cd screen-recorder-pro
+
+# 安装依赖
+npm install
+
+# 开发模式启动
+npm run dev
+
+# 构建应用（所有平台）
+npm run build
+
+# 构建特定平台
+npm run build:mac    # macOS
+npm run build:win    # Windows
+npm run build:linux  # Linux
+```
+
+### 🖥️ 支持平台
+- **macOS** (Intel/Apple Silicon)
+- **Windows** (Windows 10及以上)
+- **Linux** (Ubuntu/Debian/Fedora等主流发行版)
+
+---
+
+# Screen Recorder - Release Notes
+
+## Version 1.0.0 (2026-01-07)
+
+### 📋 Version Overview
+This is the stable release of Screen Recorder, fully refactored using Electron + React + electron-vite, improving code quality and maintainability.
+
+### ✨ Key Features
+- **Core Recording**: Fullscreen recording, window recording, audio recording, camera picture-in-picture
+- **Architecture**: React component-based development for better code reusability
+- **Modern Build**: electron-vite as build tool for improved development efficiency
+- **Routing**: Asynchronous route loading for optimized app performance
+- **Code Quality**: ESLint and Prettier integration for code standards
+- **Secure Communication**: contextBridge for safe main/renderer process communication
+
+### 🚀 Version Changes
+1. **Architecture Refactoring**
+   - Replaced pure HTML with React for component-based development
+   - Introduced electron-vite as modern build tool
+   - Implemented asynchronous route loading for better performance
+   - Optimized project structure for improved maintainability
+
+2. **Feature Optimization**
+   - Refactored recording control logic for enhanced stability
+   - Improved camera picture-in-picture window implementation
+   - Enhanced settings window user experience
+   - Strengthened error handling mechanisms
+
+3. **Code Quality Improvements**
+   - Integrated ESLint for code quality checking
+   - Used Prettier for consistent code formatting
+   - Fixed potential security issues
+   - Optimized main/renderer process communication
+
+### 📦 Installation Instructions
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd screen-recorder-pro
+
+# Install dependencies
+npm install
+
+# Start development mode
+npm run dev
+
+# Build application (all platforms)
+npm run build
+
+# Build specific platform
+npm run build:mac    # macOS
+npm run build:win    # Windows
+npm run build:linux  # Linux
+```
+
+### 🖥️ Supported Platforms
+- **macOS** (Intel/Apple Silicon)
+- **Windows** (Windows 10 and above)
+- **Linux** (Ubuntu/Debian/Fedora and other mainstream distributions)
+
+---
+
 ## Version 0.0.2 (2026-01-04)
 
 ### 📋 版本概述

@@ -93,6 +93,24 @@ async function toggleRecording() {
 }
 
 async function startRecording() {
+  console.log(`
+    isRecording: ${isRecording}\n
+    isMicEnabled: ${isMicEnabled}\n
+    isCameraEnabled: ${isCameraEnabled}\n
+  `)
+  try {
+    
+    const permission = await ipcRenderer.invoke('get-permissions', 'screen');
+    if (!permission) {
+      showErrorNotification('申请桌面录制权限失败');
+      return;
+    }
+  } catch (error) {
+    console.log('get-permissions screen', error)
+    showErrorNotification('申请桌面录制权限失败');
+    return
+  }
+
   try {
     let screenSource;
     
@@ -133,19 +151,36 @@ async function startRecording() {
       showErrorNotification('未找到可用的录制源');
       return;
     }
-    // Create media stream
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: screenSource.id,
-          minWidth: 1280,
-          maxWidth: 1920,
-          minHeight: 720,
-          maxHeight: 1080
+    
+    // Create media stream with screen recording permission check
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: screenSource.id,
+            minWidth: 1280,
+            maxWidth: 1920,
+            minHeight: 720,
+            maxHeight: 1080
+          }
         }
+      });
+    } catch (screenError) {
+      console.error('Error accessing screen:', screenError);
+      
+      // 提供更具体的屏幕录制权限错误提示
+      let errorMessage = '无法访问屏幕录制功能';
+      if (screenError.name === 'NotAllowedError') {
+        errorMessage = '屏幕录制权限被拒绝，请在系统设置中允许访问';
+      } else if (screenError.name === 'NotFoundError') {
+        errorMessage = '未找到可用的屏幕录制设备';
       }
-    });
+      
+      showErrorNotification(errorMessage);
+      return;
+    }
     
     // Store the recording stream
     recordingStream = stream;
@@ -153,20 +188,31 @@ async function startRecording() {
     
     // Always create microphone audio stream and add to recording stream at start
     // but disable it if mic is not enabled initially
-    try {
-      audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const audioTrack = audioStream.getAudioTracks()[0];
-      // Set initial enabled state based on mic setting
-      audioTrack.enabled = isMicEnabled;
-      stream.addTrack(audioTrack);
-    } catch (audioError) {
-      console.error('Error adding audio stream:', audioError);
-      // Continue recording without audio
-      audioStream = null;
-      isMicEnabled = false;
-      micBtn.classList.remove('active');
-      showErrorNotification('无法访问麦克风，请检查权限设置');
-      return
+    if (isMicEnabled) {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioTrack = audioStream.getAudioTracks()[0];
+        // Set initial enabled state based on mic setting
+        audioTrack.enabled = isMicEnabled;
+        stream.addTrack(audioTrack);
+      } catch (audioError) {
+        console.error('Error adding audio stream:', audioError);
+        // Continue recording without audio
+        audioStream = null;
+        isMicEnabled = false;
+        micBtn.classList.remove('active');
+        
+        // 提供更具体的麦克风权限错误提示
+        let errorMessage = '无法访问麦克风';
+        if (audioError.name === 'NotAllowedError') {
+          errorMessage = '麦克风权限被拒绝，请在系统设置中允许访问';
+        } else if (audioError.name === 'NotFoundError') {
+          errorMessage = '未检测到麦克风设备';
+        }
+        
+        showErrorNotification(errorMessage);
+        return
+      }
     }
     
     // Add camera stream if enabled
@@ -179,7 +225,16 @@ async function startRecording() {
         console.error('Error adding camera stream:', cameraError);
         // Continue recording without camera
         cameraStream = null;
-        showErrorNotification('无法访问摄像头，请检查权限设置');
+        
+        // 提供更具体的摄像头权限错误提示
+        let errorMessage = '无法访问摄像头';
+        if (cameraError.name === 'NotAllowedError') {
+          errorMessage = '摄像头权限被拒绝，请在系统设置中允许访问';
+        } else if (cameraError.name === 'NotFoundError') {
+          errorMessage = '未检测到摄像头设备';
+        }
+        
+        showErrorNotification(errorMessage);
         return
       }
     }
@@ -212,8 +267,15 @@ async function startRecording() {
   } catch (error) {
       console.error('Error starting recording:', error);
       statusText.textContent = 'Error';
-      showErrorNotification('无法开始录制，请确保授予权限');
-    }
+      
+      // 提供更具体的录制错误提示
+      let errorMessage = '无法开始录制';
+      if (error.name === 'NotAllowedError') {
+        errorMessage = '录制权限被拒绝，请检查系统权限设置';
+      }
+      
+      showErrorNotification(errorMessage);
+  }
 }
 
 function stopRecording() {
@@ -262,6 +324,14 @@ function saveRecording(chunks) {
  * 在录制过程中动态管理音频流，避免因音频轨道变化导致录制中断
  */
 async function toggleMic() {
+  try {
+    
+    const flagPermiss = await ipcRenderer.invoke('ask-permissions', 'microphone');
+    if (!flagPermiss) {
+      showErrorNotification('用户拒绝了麦克风访问权限');
+      return;
+    }
+  } catch (error) {}
   // 记录当前麦克风状态
   const wasEnabled = isMicEnabled;
   
@@ -285,8 +355,19 @@ async function toggleMic() {
         });
       }
     } catch (error) {
-      console.error('无法访问麦克风，请检查权限设置:', error);
-      showErrorNotification('无法访问麦克风，请检查权限设置');
+      console.error('无法访问麦克风:', error);
+      
+      // 提供更具体的错误提示
+      let errorMessage = '无法访问麦克风，请检查权限设置';
+      if (error.name === 'NotAllowedError') {
+        errorMessage = '麦克风权限被拒绝，请在系统设置中允许访问';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = '未检测到麦克风设备';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = '麦克风正在被其他应用使用';
+      }
+      
+      showErrorNotification(errorMessage);
       // 保持禁用状态
       isMicEnabled = false;
       micBtn.classList.remove('active');
@@ -322,8 +403,16 @@ async function toggleMic() {
 
 // 开启摄像头
 async function toggleCamera() {
+  try {
+    
+    const flagPermiss = await ipcRenderer.invoke('ask-permissions', 'camera');
+    console.log('flagPermiss', flagPermiss)
+    if (!flagPermiss) {
+      showErrorNotification('用户拒绝了摄像头访问权限');
+      return;
+    }
+  } catch (error) {}
   const wasEnabled = isCameraEnabled;
-  console.log('toggleCamera--1')
   // 如果要启用摄像头，先检查权限
   if (!isCameraEnabled) {
     console.log('toggleCamera--2')
@@ -354,9 +443,20 @@ async function toggleCamera() {
             recordingStream.addTrack(cameraTrack);
           } catch (error) {
             console.error('录制过程中启用摄像头出错:', error);
+            
+            // 提供更具体的错误提示
+            let errorMessage = '无法启用摄像头，请检查权限设置';
+            if (error.name === 'NotAllowedError') {
+              errorMessage = '摄像头权限被拒绝，请在系统设置中允许访问';
+            } else if (error.name === 'NotFoundError') {
+              errorMessage = '未检测到摄像头设备';
+            } else if (error.name === 'NotReadableError') {
+              errorMessage = '摄像头正在被其他应用使用';
+            }
+            
             isCameraEnabled = false;
             cameraBtn.classList.remove('active');
-            showErrorNotification('无法启用摄像头，请检查权限设置');
+            showErrorNotification(errorMessage);
           }
         }
       } else {
@@ -366,15 +466,37 @@ async function toggleCamera() {
             cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
           } catch (error) {
             console.error('启用摄像头出错:', error);
+            
+            // 提供更具体的错误提示
+            let errorMessage = '无法启用摄像头，请检查权限设置';
+            if (error.name === 'NotAllowedError') {
+              errorMessage = '摄像头权限被拒绝，请在系统设置中允许访问';
+            } else if (error.name === 'NotFoundError') {
+              errorMessage = '未检测到摄像头设备';
+            } else if (error.name === 'NotReadableError') {
+              errorMessage = '摄像头正在被其他应用使用';
+            }
+            
             isCameraEnabled = false;
             cameraBtn.classList.remove('active');
-            showErrorNotification('无法启用摄像头，请检查权限设置');
+            showErrorNotification(errorMessage);
           }
         }
       }
     } catch (error) {
-      console.error('无法访问摄像头，请检查权限设置:', error);
-      showErrorNotification('无法访问摄像头，请检查权限设置');
+      console.error('无法访问摄像头:', error);
+      
+      // 提供更具体的错误提示
+      let errorMessage = '无法访问摄像头，请检查权限设置';
+      if (error.name === 'NotAllowedError') {
+        errorMessage = '摄像头权限被拒绝，请在系统设置中允许访问';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = '未检测到摄像头设备';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = '摄像头正在被其他应用使用';
+      }
+      
+      showErrorNotification(errorMessage);
       // 保持禁用状态
       isCameraEnabled = false;
       cameraBtn.classList.remove('active');
