@@ -24,6 +24,15 @@ body {
   display: flex
   flex-direction: column
   -webkit-app-region: drag
+  opacity: 0
+  transform: scale(0.95) translateY(-10px)
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1)
+}
+
+.settings-container.visible {
+  opacity: 1
+  transform: scale(1) translateY(0)
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4)
 }
 
 .settings-header {

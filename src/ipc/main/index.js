@@ -21,6 +21,8 @@ let screenSelectorWindow
 let settingsWindow
 let screenSelectorCallback = null
 
+
+
 // 创建主窗口
 function createMainWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
@@ -282,162 +284,33 @@ function createScreenSelectorWindow() {
     })
 }
 
-// IPC 事件处理
-ipcMain.handle('toggle-recording', async () => {
-    // 请求屏幕录制权限
-    if (process.platform === 'darwin') {
-        const hasPermission = systemPreferences.getMediaAccessStatus('screen') === 'granted'
-        if (!hasPermission) {
-            systemPreferences.askForMediaAccess('screen')
-            // 权限请求后需要重新检查
-            setTimeout(() => {
-                return systemPreferences.getMediaAccessStatus('screen') === 'granted'
-            }, 1000)
-        }
-        return hasPermission
-    }
-    return true
-})
+// 导入并初始化 IPC 事件处理模块
+const { initIPC } = require('../ipc/index')
 
-// 检查并请求系统权限
-ipcMain.handle('ask-permissions', async (event, type) => {
-    console.log('ask-permissions', type)
-    if (!type) return false
-    if (process.platform === 'darwin') {
-        // camera  microphone
-        const hasPermission = systemPreferences.getMediaAccessStatus(type) === 'granted'
+// 收集窗口变量和窗口创建函数
+const windowVars = {
+    mainWindow,
+    errorWindow,
+    cameraWindow,
+    screenSelectorWindow,
+    settingsWindow
+}
 
-        console.log('ask-permissions hasPermission', hasPermission)
-        if (!hasPermission) {
-            const isAuthorized = await systemPreferences.askForMediaAccess(type)
-            // 权限请求后需要重新检查
-            if (isAuthorized) {
-                console.log(type + '权限已授权')
-            } else {
-                console.log(`用户拒绝了${type}权限`)
-            }
-            return isAuthorized
-        }
-        return hasPermission
-    }
-    return true
-})
+const windowFunctions = {
+    createErrorWindow,
+    createCameraWindow,
+    createSettingsWindow,
+    createScreenSelectorWindow
+}
 
-ipcMain.handle('get-sources', async () => {
-    // 获取屏幕和窗口源
-    const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
-        thumbnailSize: {
-            width: 1920,
-            height: 1080
-        }
-    })
-    return sources
-})
-
-// 显示错误提示
-ipcMain.on('show-error', (event, { message, duration }) => {
-    console.log('Creating error window22', errorWindow)
-
-    createErrorWindow({ message, duration })
-
-    // 延迟关闭窗口
-    // setTimeout(() => {
-    //     if (errorWindow && !errorWindow.isDestroyed()) {
-    //         errorWindow.hide();
-    //     }
-    // }, duration || 3000);
-})
-
-ipcMain.on('close-error-window', (event) => {
-    console.log('Closing error window')
-    if (errorWindow && !errorWindow.isDestroyed()) {
-        errorWindow.close()
-    }
-})
-
-// 切换摄像头窗口
-ipcMain.on('toggle-camera-window', (event, isEnabled) => {
-    if (isEnabled) {
-        createCameraWindow()
-        console.log('first showCamera')
-    } else {
-        if (cameraWindow && !cameraWindow.isDestroyed()) {
-            cameraWindow.close()
-        }
-    }
-})
-
-// 显示屏幕选择器
-ipcMain.on('show-screen-selector', (event) => {
-    createScreenSelectorWindow()
-})
-
-// 屏幕选择完成
-ipcMain.on('screen-selected', (event, selectedSource) => {
-    if (screenSelectorWindow && !screenSelectorWindow.isDestroyed()) {
-        screenSelectorWindow.close()
-    }
-
-    // 向主窗口发送选中的源
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('screen-selected', selectedSource)
-    }
-})
-
-// 显示设置窗口
-ipcMain.on('show-settings-window', (event, selectedFormat) => {
-    createSettingsWindow(selectedFormat)
-})
-
-// 关闭设置窗口
-ipcMain.on('settings-window-close', (event) => {
-    if (settingsWindow && !settingsWindow.isDestroyed()) {
-        settingsWindow.close()
-    }
-})
-
-// 格式选择完成
-ipcMain.on('format-selected', (event, selectedFormat) => {
-    // 向主窗口发送选中的格式
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('format-selected', selectedFormat)
-    }
-})
-
-// 摄像头准备就绪
-ipcMain.on('camera-ready', (event) => {
-    console.log('Camera is ready')
-})
-
-// 摄像头停止
-ipcMain.on('camera-stopped', (event) => {
-    console.log('Camera has stopped')
-})
-
-// 摄像头错误
-ipcMain.on('camera-error', (event, error) => {
-    console.error('Camera error:', error)
-    showErrorNotification(error)
-})
+// 初始化 IPC 处理程序
+initIPC(windowVars, windowFunctions)
 
 // 切换摄像头
 function toggleCamera(isEnabled) {
     if (cameraWindow && !cameraWindow.isDestroyed()) {
         cameraWindow.webContents.send('toggle-camera', isEnabled)
     }
-}
-
-// 关闭摄像头窗口
-ipcMain.on('close-overlay', (event) => {
-    if (cameraWindow && !cameraWindow.isDestroyed()) {
-        cameraWindow.close()
-    }
-})
-
-// 显示错误提示
-function showErrorNotification(message) {
-    ipcMain.emit('show-error', null, { message, duration: 3000 })
 }
 
 // 应用生命周期事件

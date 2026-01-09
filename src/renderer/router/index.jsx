@@ -2,8 +2,8 @@ import React, { lazy, Suspense } from 'react'
 import { createHashRouter } from 'react-router-dom'
 
 // 异步加载页面组件
-import App from '../App'
-// const App = () => lazy(() => import('../App'));
+import Home from '../pages/Home'
+// const Home = () => lazy(() => import('../pages/Home'));
 import Error from '../pages/Error'
 // const Error = () => lazy(() => import('../pages/Error'));
 const CameraOverlay = lazy(() => import('../pages/CameraOverlay'))
@@ -17,7 +17,7 @@ const Loading = () => <div>Loading...</div>
 const router = createHashRouter([
     {
         path: '/',
-        element: <App />
+        element: <Home />
     },
     {
         path: '/error',

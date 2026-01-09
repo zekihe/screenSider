@@ -3,6 +3,7 @@ import './Settings.styl'
 
 function Settings() {
     const [selectedFormat, setSelectedFormat] = useState('mp4')
+    const [isVisible, setIsVisible] = useState(false) // 控制动画显示的状态
 
     useEffect(() => {
         // 从主进程获取当前选择的格式
@@ -12,10 +13,20 @@ function Settings() {
             })
         }
 
+        // 添加动画类
+        setTimeout(() => {
+            setIsVisible(true)
+        }, 10) // 短暂延迟确保DOM已渲染
+
         // 点击窗口外部关闭窗口
         const handleBodyClick = (e) => {
             if (e.target === document.body) {
-                window.electronAPI.closeSettingsWindow()
+                // 添加关闭动画
+                setIsVisible(false)
+                // 动画完成后关闭窗口
+                setTimeout(() => {
+                    window.electronAPI.closeSettingsWindow()
+                }, 300)
             }
         }
 
@@ -26,7 +37,12 @@ function Settings() {
     }, [])
 
     const handleClose = () => {
-        window.electronAPI.closeSettingsWindow()
+        // 添加关闭动画
+        setIsVisible(false)
+        // 动画完成后关闭窗口
+        setTimeout(() => {
+            window.electronAPI.closeSettingsWindow()
+        }, 300)
     }
 
     const handleFormatChange = (e) => {
@@ -36,7 +52,7 @@ function Settings() {
     }
 
     return (
-        <div className="settings-container">
+        <div className={`settings-container ${isVisible ? 'visible' : ''}`}>
             <div className="settings-header">
                 <h1>Settings</h1>
                 <button id="close-btn" className="close-btn" onClick={handleClose}>

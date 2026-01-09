@@ -34,7 +34,6 @@ body {
   backdrop-filter: blur(10px)
   border: 1px solid rgba(255, 255, 255, 0.1)
   width: auto
-  min-width: 400px
   height: 80px
   position: relative
   -webkit-app-region: drag
@@ -161,6 +160,33 @@ body {
 
 .rec-indicator.blinking {
   animation: blink 1s infinite
+}
+
+/* Recording Controls */
+.control-btn.pause-btn, 
+.control-btn.stop-btn {
+  font-size: 24px
+  color: #fff
+  opacity: 1
+  background: rgba(255, 255, 255, 0.05)
+  border-radius: 50%
+}
+
+.pause-btn:hover, .stop-btn:hover {
+  background: rgba(255, 255, 255, 0.1)
+  transform: scale(1.1)
+}
+
+.stop-btn {
+  margin-left: 10px
+}
+
+.stop-btn svg {
+  color: #FF3B30
+}
+
+.stop-btn:hover svg {
+  color: #FF453A
 }
 
 /* SVG Icons */
