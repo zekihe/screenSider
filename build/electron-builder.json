@@ -27,6 +27,7 @@
     "hardenedRuntime": true,
     "entitlements": "entitlements.mac.plist",
     "entitlementsInherit": "entitlements.mac.plist",
+    "icon": "build/icons/icons/mac/icon.icns",
     "extendInfo": {
       "NSCameraUsageDescription": "This app needs access to your camera to enable picture-in-picture recording.",
       "NSMicrophoneUsageDescription": "This app needs access to your microphone to record audio.",
@@ -41,7 +42,7 @@
       "portable",
       "zip"
     ],
-    "icon": "build/icon.ico"
+    "icon": "build/icons/icons/win/icon.ico"
   },
   "linux": {
     "target": [
